@@ -1,0 +1,49 @@
+service: url-shortener
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: us-west-2 
+  environment:
+    BASE_URL: ${env:BASE_URL} 
+
+functions:
+  createShortUrl:
+    handler: lambdas/createShortUrl.handler
+    events:
+      - http:
+          path: shorturl
+          method: post
+          cors: true
+
+  redirectUrl:
+    handler: lambdas/redirectUrl.handler
+    events:
+      - http:
+          path: {shortCode}
+          method: get
+          cors: true
+          
+  getClickStats:
+    handler: lambdas/getClickStats.handler
+    events:
+      - http:
+          path: clickstats/{shortCode}
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    URLMappings:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: URLMappings
+        AttributeDefinitions:
+          - AttributeName: shortCode
+            AttributeType: S
+        KeySchema:
+          - AttributeName: shortCode
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5

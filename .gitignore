@@ -1,0 +1,22 @@
+# Node.js dependencies
+/node_modules
+
+# AWS Serverless deployment artifacts
+.serverless/
+
+# dotenv environment variable files
+.env
+
+# Logs
+*.log
+
+# npm package lock file
+package-lock.json
+
+# IDE files (optional, add based on your IDE)
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
