@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = async (event) => {
-  const shortCode = event.pathParameters.shortenedCode;
+  const shortCode = event.pathParameters.shortCode;
 
   const params = {
     TableName: 'URLMappings',
