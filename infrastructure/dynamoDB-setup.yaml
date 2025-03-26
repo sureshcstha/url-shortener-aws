@@ -6,10 +6,6 @@ Resources:
       AttributeDefinitions:
         - AttributeName: shortCode
           AttributeType: S
-        - AttributeName: originalUrl
-          AttributeType: S
-        - AttributeName: clicks
-          AttributeType: N
       KeySchema:
         - AttributeName: shortCode
           KeyType: HASH

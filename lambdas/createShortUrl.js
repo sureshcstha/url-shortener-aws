@@ -1,10 +1,7 @@
-require('dotenv').config();
-
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
-const BASE_URL = process.env.BASE_URL;
 
 exports.handler = async (event) => {
   const { originalUrl } = JSON.parse(event.body);
@@ -23,7 +20,7 @@ exports.handler = async (event) => {
     await dynamoDB.put(params).promise();
     return {
       statusCode: 201,
-      body: JSON.stringify({ shortCode, shortUrl: `${BASE_URL}/${shortCode}` }),
+      body: JSON.stringify({ shortCode, shortUrl: `https://shresthatech.com/${shortCode}` }),
     };
   } catch (error) {
     return { statusCode: 500, body: JSON.stringify({ message: 'Error creating short URL' }) };

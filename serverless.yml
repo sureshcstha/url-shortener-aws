@@ -2,10 +2,15 @@ service: url-shortener
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs22.x
   region: us-west-2 
-  environment:
-    BASE_URL: ${env:BASE_URL} 
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - dynamodb:GetItem
+      - dynamodb:UpdateItem
+      - dynamodb:PutItem
+    Resource: arn:aws:dynamodb:us-west-2:956450360554:table/URLMappings
 
 functions:
   createShortUrl:
@@ -20,7 +25,7 @@ functions:
     handler: lambdas/redirectUrl.handler
     events:
       - http:
-          path: {shortCode}
+          path: '{shortCode}'
           method: get
           cors: true
           
@@ -31,19 +36,3 @@ functions:
           path: clickstats/{shortCode}
           method: get
           cors: true
-
-resources:
-  Resources:
-    URLMappings:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: URLMappings
-        AttributeDefinitions:
-          - AttributeName: shortCode
-            AttributeType: S
-        KeySchema:
-          - AttributeName: shortCode
-            KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5

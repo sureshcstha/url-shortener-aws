@@ -15,8 +15,8 @@ exports.handler = async (event) => {
       await dynamoDB.update({
         TableName: 'URLMappings',
         Key: { shortCode },
-        UpdateExpression: 'SET clicks = clicks + :inc',
-        ExpressionAttributeValues: { ':inc': 1 },
+        UpdateExpression: 'SET clicks = if_not_exists(clicks, :start) + :inc',
+        ExpressionAttributeValues: { ':inc': 1, ':start': 0 },
       }).promise();
 
       return {
