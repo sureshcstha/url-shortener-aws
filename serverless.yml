@@ -43,3 +43,6 @@ functions:
           path: lookup/{shortCode}
           method: get
           cors: true
+
+resources:
+  - ${file(infrastructure/dynamoDB-setup.yaml)}

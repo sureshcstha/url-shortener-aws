@@ -6,7 +6,16 @@ Resources:
       AttributeDefinitions:
         - AttributeName: shortCode
           AttributeType: S
+        - AttributeName: originalUrl
+          AttributeType: S
       KeySchema:
         - AttributeName: shortCode
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: originalUrl-index
+          KeySchema:
+            - AttributeName: originalUrl
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
