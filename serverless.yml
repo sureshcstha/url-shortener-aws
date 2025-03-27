@@ -11,6 +11,10 @@ provider:
       - dynamodb:UpdateItem
       - dynamodb:PutItem
     Resource: arn:aws:dynamodb:us-west-2:956450360554:table/URLMappings
+  - Effect: Allow
+    Action:
+      - dynamodb:Query
+    Resource: arn:aws:dynamodb:us-west-2:956450360554:table/URLMappings/index/originalUrl-index
 
 functions:
   createShortUrl:
