@@ -44,5 +44,3 @@ functions:
           method: get
           cors: true
 
-resources:
-  - ${file(infrastructure/dynamoDB-setup.yaml)}
