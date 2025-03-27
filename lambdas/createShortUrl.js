@@ -42,6 +42,11 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 201,
+      headers: {
+        "Access-Control-Allow-Origin": "*", 
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
       body: JSON.stringify({ shortCode, shortUrl: `https://shresthatech.com/${shortCode}` }),
     };
   } catch (error) {
