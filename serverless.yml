@@ -36,3 +36,10 @@ functions:
           path: clickstats/{shortCode}
           method: get
           cors: true
+  getDestinationUrl:
+    handler: lambdas/getDestinationUrl.handler
+    events:
+      - http:
+          path: lookup/{shortCode}
+          method: get
+          cors: true
