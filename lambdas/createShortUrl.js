@@ -1,7 +1,12 @@
 const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
+
+// Function to generate the short code
+const generateShortCode = (length = 7) => {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
 
 exports.handler = async (event) => {
   const { originalUrl } = JSON.parse(event.body);
@@ -25,7 +30,31 @@ exports.handler = async (event) => {
       shortCode = checkResult.Items[0].shortCode;
     } else {
       // URL doesn't exist, generate a new short code
-      shortCode = uuidv4().slice(0, 7); // Generate a 7-char short code
+      shortCode = generateShortCode();
+
+      // Check if the short code already exists in DynamoDB
+      let isUnique = false;
+
+      while (!isUnique) {
+        // Check if the short code already exists in the database
+        const shortCodeCheckParams = {
+          TableName: 'URLMappings',
+          KeyConditionExpression: 'shortCode = :shortCode',
+          ExpressionAttributeValues: {
+            ':shortCode': shortCode,
+          },
+        };
+
+        const shortCodeCheckResult = await dynamoDB.query(shortCodeCheckParams).promise();
+
+        if (shortCodeCheckResult.Items.length === 0) {
+          // Short code is unique, break the loop
+          isUnique = true;
+        } else {
+          // Short code already exists, generate a new one
+          shortCode = generateShortCode();
+        }
+      }
 
       // Save the new short code to DynamoDB
       const params = {
