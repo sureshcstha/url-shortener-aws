@@ -8,8 +8,11 @@ const generateShortCode = (length = 7) => {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
+const allowedOrigins = ['https://shrunkit.netlify.app', 'https://tny.shresthatech.com'];
+
 exports.handler = async (event) => {
   const { originalUrl } = JSON.parse(event.body);
+  const origin = event.headers.origin; // Get the Origin header from the incoming request
 
   // First, check if the URL already exists in the database
   const checkParams = {
@@ -69,15 +72,22 @@ exports.handler = async (event) => {
       await dynamoDB.put(params).promise();
     }
 
-    return {
-      statusCode: 201,
-      headers: {
-        "Access-Control-Allow-Origin": "*", 
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-      body: JSON.stringify({ shortCode, shortUrl: `https://shresthatech.com/${shortCode}` }),
-    };
+    if (allowedOrigins.includes(origin)) {
+      return {
+        statusCode: 201,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Methods": "POST",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+        body: JSON.stringify({ shortCode, shortUrl: `https://shresthatech.com/${shortCode}` }),
+      };
+    } else {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ message: 'Forbidden: Origin not allowed' }),
+      };
+    }
   } catch (error) {
     return { statusCode: 500, body: JSON.stringify({ message: 'Error creating short URL' }) };
   }

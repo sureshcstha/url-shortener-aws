@@ -1,8 +1,19 @@
 const AWS = require('aws-sdk');
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
+const allowedOrigins = ['https://shrunkit.netlify.app', 'https://tny.shresthatech.com'];
+
 exports.handler = async (event) => {
+  const origin = event.headers.origin; // Get the Origin header from the incoming request
   const shortCode = event.pathParameters.shortCode;
+
+  // Check if the origin is allowed
+  if (!allowedOrigins.includes(origin)) {
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ message: 'Forbidden: Origin not allowed' }),
+    };
+  }
 
   const params = { TableName: 'URLMappings', Key: { shortCode } };
 
@@ -12,7 +23,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 200,
         headers: {
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "GET",
           "Access-Control-Allow-Headers": "Content-Type",
         },
