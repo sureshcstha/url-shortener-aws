@@ -80,7 +80,7 @@ exports.handler = async (event) => {
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",
         },
-        body: JSON.stringify({ shortCode, shortUrl: `https://shresthatech.com/${shortCode}` }),
+        body: JSON.stringify({ shortCode, shortUrl: `https://tiny.shresthatech.com/${shortCode}` }),
       };
     } else {
       return {
