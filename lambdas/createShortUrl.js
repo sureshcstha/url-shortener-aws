@@ -8,23 +8,80 @@ const generateShortCode = (length = 7) => {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
+const removeTrailingSlash = (url) => {
+  return url.replace(/\/$/, '');
+};
+
 const allowedOrigins = ['https://shrunkit.netlify.app', 'https://tny.shresthatech.com'];
 
-exports.handler = async (event) => {
-  const { originalUrl } = JSON.parse(event.body);
-  const origin = event.headers.origin; // Get the Origin header from the incoming request
-
-  // First, check if the URL already exists in the database
-  const checkParams = {
-    TableName: 'URLMappings',
-    IndexName: 'originalUrl-index',
-    KeyConditionExpression: 'originalUrl = :originalUrl',
-    ExpressionAttributeValues: {
-      ':originalUrl': originalUrl,
-    },
-  };
-
+const normalizeUrl = (url) => {
   try {
+    let normalized = new URL(url.trim());
+
+    // Convert to lowercase for hostname
+    normalized.hostname = normalized.hostname.toLowerCase();
+
+    // Remove trailing dots or slashes from the hostname
+    normalized.hostname = normalized.hostname.replace(/\.+$/, "").replace(/\/+$/, "");
+
+    // Remove 'www.' if you want a consistent format
+    if (normalized.hostname.startsWith("www.")) {
+      normalized.hostname = normalized.hostname.substring(4);
+    }
+
+    // Remove default ports
+    if ((normalized.protocol === "https:" && normalized.port === "443") ||
+        (normalized.protocol === "http:" && normalized.port === "80")) {
+      normalized.port = "";
+    }
+
+    // Remove trailing slash
+    normalized.pathname = normalized.pathname.replace(/\/+$/, '');
+
+    // Decode percent-encoded characters
+    normalized.pathname = decodeURIComponent(normalized.pathname);
+
+    // Sort query parameters alphabetically
+    if (normalized.search) {
+      let params = new URLSearchParams(normalized.search);
+      normalized.search = "?" + [...params.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&");
+    }
+
+    return removeTrailingSlash(normalized.toString());
+  } catch (error) {
+    throw new Error("Invalid URL provided");
+  }
+};
+
+
+exports.handler = async (event) => {
+  try {
+    if (!event.body) {
+      return { statusCode: 400, body: JSON.stringify({ message: "Request body missing" }) };
+    }
+
+    const { originalUrl } = JSON.parse(event.body);
+
+    if (!originalUrl) {
+      return { 
+        statusCode: 400, 
+        body: JSON.stringify({ message: "Missing URL parameter" }) 
+      };
+    }
+
+    const normalizedUrl = normalizeUrl(originalUrl); // This will throw if the URL is invalid
+    const origin = event.headers?.origin || ""; // Get the Origin header from the incoming request
+
+    // First, check if the URL already exists in the database
+    const checkParams = {
+      TableName: 'URLMappings',
+      IndexName: 'originalUrl-index',
+      KeyConditionExpression: 'originalUrl = :originalUrl',
+      ExpressionAttributeValues: {
+        ':originalUrl': normalizedUrl,
+      },
+    };
+
     const checkResult = await dynamoDB.query(checkParams).promise();
     let shortCode;
 
@@ -33,43 +90,32 @@ exports.handler = async (event) => {
       shortCode = checkResult.Items[0].shortCode;
     } else {
       // URL doesn't exist, generate a new short code
-      shortCode = generateShortCode();
-
-      // Check if the short code already exists in DynamoDB
       let isUnique = false;
 
       while (!isUnique) {
-        // Check if the short code already exists in the database
-        const shortCodeCheckParams = {
+        // generate a new short code
+        shortCode = generateShortCode();
+
+        // try inserting with a conditional expression
+        const params = {
           TableName: 'URLMappings',
-          KeyConditionExpression: 'shortCode = :shortCode',
-          ExpressionAttributeValues: {
-            ':shortCode': shortCode,
+          Item: {
+            shortCode,
+            originalUrl: normalizedUrl,
+            clicks: 0,
           },
+          ConditionExpression: "attribute_not_exists(shortCode)", // Ensure the shortCode does not exist
         };
 
-        const shortCodeCheckResult = await dynamoDB.query(shortCodeCheckParams).promise();
-
-        if (shortCodeCheckResult.Items.length === 0) {
-          // Short code is unique, break the loop
-          isUnique = true;
-        } else {
-          // Short code already exists, generate a new one
-          shortCode = generateShortCode();
+        try {
+          await dynamoDB.put(params).promise();
+          isUnique = true; // Success, short code is unique
+        } catch (error) {
+          if (error.code !== 'ConditionalCheckFailedException') {
+            throw error; // If it's not a duplicate conflict, rethrow
+          }
         }
       }
-
-      // Save the new short code to DynamoDB
-      const params = {
-        TableName: 'URLMappings',
-        Item: {
-          shortCode,
-          originalUrl,
-          clicks: 0,
-        },
-      };
-
-      await dynamoDB.put(params).promise();
     }
 
     if (allowedOrigins.includes(origin)) {
@@ -89,6 +135,11 @@ exports.handler = async (event) => {
       };
     }
   } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ message: 'Error creating short URL' }) };
+    // console.error("Lambda Error:", error); // Log all unexpected errors in production
+
+    if (error.message === "Invalid URL provided") {
+      return { statusCode: 400, body: JSON.stringify({ message: "Invalid URL provided" }) };
+    }
+    return { statusCode: 500, body: JSON.stringify({ message: 'Error creating short URL', error: error.message }) };
   }
 };
