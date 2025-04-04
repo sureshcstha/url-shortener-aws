@@ -3,6 +3,9 @@ service: url-shortener
 provider:
   name: aws
   runtime: nodejs22.x
+  environment:
+    JWT_SECRET: ${env:JWT_SECRET} 
+    BASE_URL: ${env:BASE_URL} 
   region: us-west-2 
   iamRoleStatements:
   - Effect: Allow
@@ -11,6 +14,7 @@ provider:
       - dynamodb:UpdateItem
       - dynamodb:PutItem
       - dynamodb:Query
+      - dynamodb:Scan
     Resource: arn:aws:dynamodb:us-west-2:956450360554:table/URLMappings
   - Effect: Allow
     Action:
@@ -25,6 +29,32 @@ functions:
           path: shorturl
           method: post
           cors: true
+
+  getUserUrls:
+    handler: lambdas/getUserUrls.handler
+    events:
+      - http:
+          path: urls
+          method: get
+          cors: true
+          authorizer:
+            name: CognitoAuthorizer
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt: [CognitoUserPool, Arn]
+
+  updateUrl:
+    handler: lambdas/updateUrl.handler
+    events:
+      - http:
+          path: edit/{shortCode}
+          method: put
+          cors: true
+          authorizer:
+            name: CognitoAuthorizer
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt: [CognitoUserPool, Arn]
 
   redirectUrl:
     handler: lambdas/redirectUrl.handler
@@ -48,4 +78,30 @@ functions:
           path: lookup/{shortCode}
           method: get
           cors: true
+resources:
+  Resources:
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: urlShortenerUserPool
+        AutoVerifiedAttributes:
+          - email
+        Schema:
+          - Name: email
+            Required: true
+            Mutable: false
 
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: urlShortenerClient
+        UserPoolId:
+          Ref: CognitoUserPool
+        GenerateSecret: false
+        AllowedOAuthFlows:
+          - implicit
+        AllowedOAuthScopes:
+          - email
+          - openid
+        CallbackURLs:
+          - "https://shrunkit.netlify.app/callback"

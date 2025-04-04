@@ -8,6 +8,8 @@ Resources:
           AttributeType: S
         - AttributeName: originalUrl
           AttributeType: S
+        - AttributeName: createdBy
+          AttributeType: S 
       KeySchema:
         - AttributeName: shortCode
           KeyType: HASH
@@ -16,6 +18,12 @@ Resources:
         - IndexName: originalUrl-index
           KeySchema:
             - AttributeName: originalUrl
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: createdBy-index
+          KeySchema:
+            - AttributeName: createdBy
               KeyType: HASH
           Projection:
             ProjectionType: ALL

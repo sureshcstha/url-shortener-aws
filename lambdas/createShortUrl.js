@@ -1,58 +1,11 @@
 const AWS = require('aws-sdk');
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
-
-// Function to generate the short code
-const generateShortCode = (length = 7) => {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-};
-
-const removeTrailingSlash = (url) => {
-  return url.replace(/\/$/, '');
-};
+const { generateShortCode, normalizeUrl, getCurrentDate } = require('../utils/urlHelpers');
+const { getUserFromEvent } = require('../utils/auth');
 
 const allowedOrigins = ['https://shrunkit.netlify.app', 'https://tny.shresthatech.com'];
-
-const normalizeUrl = (url) => {
-  try {
-    let normalized = new URL(url.trim());
-
-    // Convert to lowercase for hostname
-    normalized.hostname = normalized.hostname.toLowerCase();
-
-    // Remove trailing dots or slashes from the hostname
-    normalized.hostname = normalized.hostname.replace(/\.+$/, "").replace(/\/+$/, "");
-
-    // Remove 'www.' if you want a consistent format
-    if (normalized.hostname.startsWith("www.")) {
-      normalized.hostname = normalized.hostname.substring(4);
-    }
-
-    // Remove default ports
-    if ((normalized.protocol === "https:" && normalized.port === "443") ||
-        (normalized.protocol === "http:" && normalized.port === "80")) {
-      normalized.port = "";
-    }
-
-    // Remove trailing slash
-    normalized.pathname = normalized.pathname.replace(/\/+$/, '');
-
-    // Decode percent-encoded characters
-    normalized.pathname = decodeURIComponent(normalized.pathname);
-
-    // Sort query parameters alphabetically
-    if (normalized.search) {
-      let params = new URLSearchParams(normalized.search);
-      normalized.search = "?" + [...params.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&");
-    }
-
-    return removeTrailingSlash(normalized.toString());
-  } catch (error) {
-    throw new Error("Invalid URL provided");
-  }
-};
-
+const baseUrl = process.env.BASE_URL; 
 
 exports.handler = async (event) => {
   try {
@@ -70,6 +23,7 @@ exports.handler = async (event) => {
     }
 
     const normalizedUrl = normalizeUrl(originalUrl); // This will throw if the URL is invalid
+    const user = getUserFromEvent(event);  // Extract user from token (if exists)
     const origin = event.headers?.origin || ""; // Get the Origin header from the incoming request
 
     // First, check if the URL already exists in the database
@@ -95,6 +49,7 @@ exports.handler = async (event) => {
       while (!isUnique) {
         // generate a new short code
         shortCode = generateShortCode();
+        const currentDate = getCurrentDate();
 
         // try inserting with a conditional expression
         const params = {
@@ -102,7 +57,9 @@ exports.handler = async (event) => {
           Item: {
             shortCode,
             originalUrl: normalizedUrl,
+            createdBy: user ? user.sub : "anonymous", 
             clicks: 0,
+            lastAccessed: currentDate,
           },
           ConditionExpression: "attribute_not_exists(shortCode)", // Ensure the shortCode does not exist
         };
@@ -126,7 +83,7 @@ exports.handler = async (event) => {
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",
         },
-        body: JSON.stringify({ shortCode, shortUrl: `https://tiny.shresthatech.com/${shortCode}` }),
+        body: JSON.stringify({ shortCode, shortUrl: `${baseUrl}/${shortCode}` }),
       };
     } else {
       return {

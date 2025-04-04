@@ -27,7 +27,11 @@ exports.handler = async (event) => {
           "Access-Control-Allow-Methods": "GET",
           "Access-Control-Allow-Headers": "Content-Type",
         },
-        body: JSON.stringify({ shortCode, clicks: result.Item.clicks || 0 }),
+        body: JSON.stringify({
+          shortCode,
+          clicks: result.Item.clicks || 0,
+          lastAccessed: result.Item.lastAccessed || "Never",
+        }),
       };
     }
     return { statusCode: 404, body: JSON.stringify({ message: 'Short URL not found' }) };

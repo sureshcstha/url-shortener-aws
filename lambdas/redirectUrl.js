@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const { getCurrentDate } = require('../utils/urlHelpers');
 
 exports.handler = async (event) => {
   const shortCode = event.pathParameters.shortCode;
@@ -12,11 +13,14 @@ exports.handler = async (event) => {
   try {
     const result = await dynamoDB.get(params).promise();
     if (result.Item) {
+      const currentDate = getCurrentDate();
+
+      // Update the clicks and last accessed date
       await dynamoDB.update({
         TableName: 'URLMappings',
         Key: { shortCode },
-        UpdateExpression: 'SET clicks = if_not_exists(clicks, :start) + :inc',
-        ExpressionAttributeValues: { ':inc': 1, ':start': 0 },
+        UpdateExpression: 'SET clicks = if_not_exists(clicks, :start) + :inc, lastAccessed = :lastAccessed',
+        ExpressionAttributeValues: { ':inc': 1, ':start': 0, ':lastAccessed': currentDate  },
       }).promise();
 
       return {
