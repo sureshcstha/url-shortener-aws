@@ -86,10 +86,19 @@ resources:
         UserPoolName: urlShortenerUserPool
         AutoVerifiedAttributes:
           - email
+        UsernameAttributes:
+          - email
         Schema:
           - Name: email
             Required: true
             Mutable: false
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: true
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
 
     CognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
@@ -98,6 +107,7 @@ resources:
         UserPoolId:
           Ref: CognitoUserPool
         GenerateSecret: false
+        AllowedOAuthFlowsUserPoolClient: true
         AllowedOAuthFlows:
           - implicit
         AllowedOAuthScopes:
